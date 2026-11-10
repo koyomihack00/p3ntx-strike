@@ -43,6 +43,7 @@ func (h *LLMProvidersHandler) LoadItems() []ListItem {
 		{ID: LLMProviderMiniMaxScreen},
 		{ID: LLMProviderMistralScreen},
 		{ID: LLMProviderXAIScreen},
+		{ID: LLMProviderClaudeCLIScreen},
 		{ID: LLMProviderCustomScreen},
 	}
 

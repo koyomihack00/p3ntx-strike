@@ -48,6 +48,7 @@ This document serves as a comprehensive guide to the configuration system in Pen
     - [MiniMax LLM Provider](#minimax-llm-provider)
     - [Mistral LLM Provider](#mistral-llm-provider)
     - [xAI (Grok) LLM Provider](#xai-grok-llm-provider)
+    - [Claude Code CLI Provider](#claude-code-cli-provider)
     - [Custom LLM Provider](#custom-llm-provider)
     - [Usage Details](#usage-details-6)
   - [Embedding Settings](#embedding-settings)
@@ -436,6 +437,9 @@ These settings control how PentAGI interacts with Docker, which is used for term
 | DockerDefaultImage           | `DOCKER_DEFAULT_IMAGE`             | `debian:latest`        | Default Docker image for containers when specific images fail |
 | DockerDefaultImageForPentest | `DOCKER_DEFAULT_IMAGE_FOR_PENTEST` | `vxcontrol/kali-linux` | Default Docker image for penetration testing tasks |
 | TerminalToolTimeout          | `TERMINAL_TOOL_TIMEOUT`            | `1200`                 | Default execution timeout in seconds applied when an agent requests `timeout=0` or a negative value. Accepted range: `1`–`10800` (3 hours). Values `<= 0` or above `10800` are clamped to the 3-hour maximum. Negative values are treated identically to `0`. |
+| ScopeGateCIDRs               | `SCOPE_GATE_CIDRS`                 | *(none)*               | Comma-separated CIDRs or single addresses in the engagement scope. Every agent tool call is judged against it before it runs; empty means nothing is in scope. An invalid entry stops the server. See [scope_approval_policy.md](scope_approval_policy.md). |
+| ScopeGateHosts               | `SCOPE_GATE_HOSTS`                 | *(none)*               | Comma-separated hostnames in scope: exact names, or `*.name` for strict subdomains of `name`. DNS is never resolved, so an address is in scope only through `SCOPE_GATE_CIDRS`. |
+| ScopeGateExternalSearch      | `SCOPE_GATE_EXTERNAL_SEARCH`       | `deny`                 | `allow` or `deny` for the tools that send a query to a third-party search service (`web_search` and the individual engines). |
 
 ### Worker Docker Access (`DOCKER_INSIDE_*`)
 
@@ -955,6 +959,16 @@ There is no `VERTEX_API_KEY` or `GOOGLE_APPLICATION_CREDENTIALS` variable wired 
 | XAIProvider  | `XAI_PROVIDER`       | *(none)*               | Provider name prefix for LiteLLM integration (optional) |
 
 **LiteLLM Integration**: Set `XAI_PROVIDER=xai` to enable model prefixing (e.g., `xai/grok-4.3`) when using LiteLLM proxy with default PentAGI configs.
+
+### Claude Code CLI Provider
+
+| Option               | Environment Variable      | Default Value | Description                                                                    |
+| -------------------- | ------------------------- | ------------- | ------------------------------------------------------------------------------ |
+| ClaudeCLIWorkerURL   | `CLAUDE_CLI_WORKER_URL`   | *(none)*      | `cmd/claudeworker` endpoint: `http://HOST:PORT` or `unix:///path/worker.sock`  |
+| ClaudeCLIWorkerToken | `CLAUDE_CLI_WORKER_TOKEN` | *(none)*      | Bearer token the worker requires (its `CLAUDE_WORKER_TOKEN_FILE` content)      |
+| ClaudeCLICallTimeout | `CLAUDE_CLI_CALL_TIMEOUT` | `600`         | Upper bound of one CLI call, in seconds                                        |
+
+The provider `claude_cli` is enabled only when both the URL and the token are set, and a flow uses it only when it is selected for that flow. Every agent defaults to the CLI's `sonnet` alias (`backend/pkg/providers/claudecli/config.yml`). See [claude_cli_adapter.md](claude_cli_adapter.md) and [claude_cli_worker.md](claude_cli_worker.md).
 
 ### Custom LLM Provider
 

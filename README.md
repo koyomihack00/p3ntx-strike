@@ -41,6 +41,7 @@
     - [MiniMax](#minimax-provider-configuration)
     - [Mistral](#mistral-provider-configuration)
     - [xAI (Grok)](#xai-grok-provider-configuration)
+    - [Claude Code CLI](#claude-code-cli-provider-configuration)
 - [Advanced Setup](#advanced-setup)
   - [Langfuse Integration](#langfuse-integration)
   - [Monitoring and Observability](#monitoring-and-observability)
@@ -2702,6 +2703,29 @@ PentAGI lists seven xAI Chat Completions model IDs that responded through the te
 
 
 ## Advanced Setup
+
+
+### Claude Code CLI Provider Configuration
+
+For a local, single-user install, PentAGI can use the Claude Code CLI already logged in on the host as the model behind a flow. The CLI runs headless in `cmd/claudeworker` with all of its own tools disabled. It only proposes tool calls, which PentAGI validates and executes with its usual tools. The worker runs on the host as the logged-in user, not inside the PentAGI container.
+
+#### Configuration Variables
+
+| Variable                  | Default Value | Description                                                                   |
+| ------------------------- | ------------- | ----------------------------------------------------------------------------- |
+| `CLAUDE_CLI_WORKER_URL`   |               | Worker endpoint: `http://HOST:PORT` or `unix:///path/to/worker.sock`          |
+| `CLAUDE_CLI_WORKER_TOKEN` |               | Bearer token the worker requires                                              |
+| `CLAUDE_CLI_CALL_TIMEOUT` | `600`         | Upper bound of one CLI call, in seconds                                       |
+
+#### Configuration Examples
+
+```bash
+# Worker on the host, reached through a mounted socket directory
+CLAUDE_CLI_WORKER_URL=unix:///run/claude-worker/worker.sock
+CLAUDE_CLI_WORKER_TOKEN=your_worker_token
+```
+
+The provider appears as `claude_cli` once both variables are set; select it per flow. Every agent uses the CLI's `sonnet` alias by default (`backend/pkg/providers/claudecli/config.yml`). Usage counts against the logged-in Claude subscription. An expired login or a reached usage limit stops the call with a clear error instead of retrying.
 
 ### Langfuse Integration
 

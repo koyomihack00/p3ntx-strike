@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	obs "pentagi/pkg/observability"
 	"pentagi/pkg/providers"
 	"pentagi/pkg/providers/provider"
+	"pentagi/pkg/tools"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -686,5 +688,67 @@ func TestFlow_PutInput_SaysWhetherTheInputWasAccepted(t *testing.T) {
 		err := fw.PutInput(context.Background(), "scan the host", &lateInputFakeProvider{}, nil)
 		controllerReceive(t, taken, "the worker to take the input")
 		assert.NoError(t, err, "a slow worker is the ordinary case and has always been quiet")
+	})
+}
+
+// gatedLogs stands in for the message and tool call logs; like the database, it refuses a write through a done context.
+type gatedLogs struct{}
+
+func (gatedLogs) PutMsg(ctx context.Context, _ database.MsglogType, _, _ *int64, _ int64, _, _ string) (int64, error) {
+	return 1, ctx.Err()
+}
+
+func (gatedLogs) UpdateMsgResult(ctx context.Context, _, _ int64, _ string, _ database.MsglogResultFormat) error {
+	return ctx.Err()
+}
+
+func (gatedLogs) PutLog(ctx context.Context, _, _ string, _ json.RawMessage, _, _ *int64) (int64, error) {
+	return 1, ctx.Err()
+}
+
+func (gatedLogs) UpdateLogSuccess(ctx context.Context, _ int64, _ string, _ float64) error {
+	return ctx.Err()
+}
+func (gatedLogs) UpdateLogFailed(ctx context.Context, _ int64, _ string, _ float64) error {
+	return ctx.Err()
+}
+
+func TestFlow_NewGatedFlowToolsExecutor_InstallsTheScopeGate(t *testing.T) {
+	obs.InitObserver(context.Background(), nil, nil, []logrus.Level{})
+
+	t.Run("an invalid scope builds no executor", func(t *testing.T) {
+		cfg := &config.Config{ScopeGateCIDRs: []string{"10.0.0.0/33"}}
+		executor, err := newGatedFlowToolsExecutor(nil, cfg, nil, nil, 1, 42)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "scope gate")
+		assert.Nil(t, executor)
+	})
+
+	t.Run("agent executors judge calls against the configured scope", func(t *testing.T) {
+		cfg := &config.Config{ScopeGateCIDRs: []string{"10.10.10.0/24"}, ScraperPrivateURL: "http://scraper.invalid"}
+		fte, err := newGatedFlowToolsExecutor(nil, cfg, nil, nil, 1, 42)
+		require.NoError(t, err)
+		fte.SetMsgLogProvider(gatedLogs{})
+		fte.SetToolCallLogProvider(gatedLogs{})
+
+		reported := false
+		executor, err := fte.GetSearcherExecutor(tools.SearcherExecutorConfig{
+			Memorist: func(context.Context, string, json.RawMessage) (string, error) { return "", nil },
+			SearchResult: func(context.Context, string, json.RawMessage) (string, error) {
+				reported = true
+				return "stored", nil
+			},
+		})
+		require.NoError(t, err)
+
+		result, err := executor.Execute(t.Context(), 1, "call-1", tools.BrowserToolName, "browser", "",
+			json.RawMessage(`{"url":"http://203.0.113.9/","action":"markdown","message":"m"}`))
+		require.NoError(t, err)
+		assert.Contains(t, result, `target "http://203.0.113.9/" is out of scope`)
+
+		result, err = executor.Execute(t.Context(), 1, "call-2", tools.SearchResultToolName, "search_result", "",
+			json.RawMessage(`{"result":"r","message":"m"}`))
+		require.NoError(t, err)
+		assert.True(t, reported, "a call that names no target must still run, got %q", result)
 	})
 }

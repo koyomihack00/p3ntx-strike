@@ -87,6 +87,7 @@ const allDefaults = () =>
     entity('DefaultProvidersConfig', {
         anthropic: defaultConfig(ProviderType.Anthropic),
         bedrock: defaultConfig(ProviderType.Bedrock),
+        claude_cli: defaultConfig(ProviderType.ClaudeCli),
         custom: defaultConfig(ProviderType.Custom),
         deepseek: defaultConfig(ProviderType.Deepseek),
         gemini: defaultConfig(ProviderType.Gemini),
@@ -106,6 +107,7 @@ const allModels = () =>
     entity('ProvidersModelsList', {
         anthropic: catalog(ProviderType.Anthropic),
         bedrock: catalog(ProviderType.Bedrock),
+        claude_cli: catalog(ProviderType.ClaudeCli),
         custom: catalog(ProviderType.Custom),
         deepseek: catalog(ProviderType.Deepseek),
         gemini: catalog(ProviderType.Gemini),
@@ -125,6 +127,7 @@ const noProviders: ResultOf<typeof SettingsProvidersDocument> = {
         enabled: entity('ProvidersReadinessStatus', {
             anthropic: false,
             bedrock: false,
+            claude_cli: false,
             custom: false,
             deepseek: false,
             gemini: false,
@@ -178,6 +181,7 @@ export const providersList = (...userDefined: ProviderConfigFragmentFragment[]) 
         enabled: entity('ProvidersReadinessStatus', {
             anthropic: true,
             bedrock: false,
+            claude_cli: false,
             custom: false,
             deepseek: false,
             gemini: false,

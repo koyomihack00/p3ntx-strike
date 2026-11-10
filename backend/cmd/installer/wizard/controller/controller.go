@@ -249,12 +249,13 @@ func openAICompatDoor(providerID string) (name, prefix string, ok bool) {
 // GetLLMProviders returns configured LLM providers
 func (c *controller) GetLLMProviders() map[string]*LLMProviderConfig {
 	providers := map[string]*LLMProviderConfig{
-		"openai":    c.GetLLMProviderConfig("openai"),
-		"anthropic": c.GetLLMProviderConfig("anthropic"),
-		"gemini":    c.GetLLMProviderConfig("gemini"),
-		"bedrock":   c.GetLLMProviderConfig("bedrock"),
-		"ollama":    c.GetLLMProviderConfig("ollama"),
-		"custom":    c.GetLLMProviderConfig("custom"),
+		"openai":     c.GetLLMProviderConfig("openai"),
+		"anthropic":  c.GetLLMProviderConfig("anthropic"),
+		"gemini":     c.GetLLMProviderConfig("gemini"),
+		"bedrock":    c.GetLLMProviderConfig("bedrock"),
+		"ollama":     c.GetLLMProviderConfig("ollama"),
+		"custom":     c.GetLLMProviderConfig("custom"),
+		"claude_cli": c.GetLLMProviderConfig("claude_cli"),
 	}
 	for _, door := range openAICompatDoors {
 		providers[door.id] = c.GetLLMProviderConfig(door.id)
@@ -282,6 +283,12 @@ func (c *controller) GetLLMProviderConfig(providerID string) *LLMProviderConfig 
 	}
 
 	switch providerID {
+	case "claude_cli":
+		providerConfig.Name = "Claude Code CLI"
+		providerConfig.BaseURL, _ = c.GetVar("CLAUDE_CLI_WORKER_URL")
+		providerConfig.APIKey, _ = c.GetVar("CLAUDE_CLI_WORKER_TOKEN")
+		providerConfig.Configured = providerConfig.BaseURL.Value != "" && providerConfig.APIKey.Value != ""
+
 	case "openai":
 		providerConfig.Name = "OpenAI"
 		providerConfig.APIKey, _ = c.GetVar("OPEN_AI_KEY")
@@ -381,6 +388,13 @@ func (c *controller) UpdateLLMProviderConfig(providerID string, config *LLMProvi
 	}
 
 	switch providerID {
+	case "claude_cli":
+		for _, envVar := range []loader.EnvVar{config.BaseURL, config.APIKey} {
+			if err := c.SetVar(envVar.Name, envVar.Value); err != nil {
+				return fmt.Errorf("failed to set %s: %w", envVar.Name, err)
+			}
+		}
+
 	case "openai":
 		if err := c.SetVar(config.APIKey.Name, config.APIKey.Value); err != nil {
 			return fmt.Errorf("failed to set %s: %w", config.APIKey.Name, err)
@@ -535,6 +549,8 @@ func (c *controller) ResetLLMProviderConfig(providerID string) map[string]*LLMPr
 	}
 
 	switch providerID {
+	case "claude_cli":
+		vars = []string{"CLAUDE_CLI_WORKER_URL", "CLAUDE_CLI_WORKER_TOKEN", "CLAUDE_CLI_CALL_TIMEOUT"}
 	case "openai":
 		vars = []string{"OPEN_AI_KEY", "OPEN_AI_SERVER_URL"}
 	case "anthropic":
@@ -2455,6 +2471,9 @@ func (c *controller) getVariableDescription(varName string) string {
 		"XAI_API_KEY":                       locale.EnvDesc_XAI_API_KEY,
 		"XAI_SERVER_URL":                    locale.EnvDesc_XAI_SERVER_URL,
 		"XAI_PROVIDER":                      locale.EnvDesc_XAI_PROVIDER,
+		"CLAUDE_CLI_WORKER_URL":             locale.EnvDesc_CLAUDE_CLI_WORKER_URL,
+		"CLAUDE_CLI_WORKER_TOKEN":           locale.EnvDesc_CLAUDE_CLI_WORKER_TOKEN,
+		"CLAUDE_CLI_CALL_TIMEOUT":           locale.EnvDesc_CLAUDE_CLI_CALL_TIMEOUT,
 		"LLM_SERVER_URL":                    locale.EnvDesc_LLM_SERVER_URL,
 		"LLM_SERVER_KEY":                    locale.EnvDesc_LLM_SERVER_KEY,
 		"LLM_SERVER_MODEL":                  locale.EnvDesc_LLM_SERVER_MODEL,
@@ -2663,6 +2682,7 @@ var maskedVariables = map[string]bool{
 	"MINIMAX_API_KEY":           true,
 	"MISTRAL_API_KEY":           true,
 	"XAI_API_KEY":               true,
+	"CLAUDE_CLI_WORKER_TOKEN":   true,
 	"LLM_SERVER_KEY":            true,
 	"LANGFUSE_PUBLIC_KEY":       true,
 	"LANGFUSE_SECRET_KEY":       true,
@@ -2767,6 +2787,9 @@ var criticalVariables = map[string]bool{
 	"XAI_API_KEY":                       true,
 	"XAI_SERVER_URL":                    true,
 	"XAI_PROVIDER":                      true,
+	"CLAUDE_CLI_WORKER_URL":             true,
+	"CLAUDE_CLI_WORKER_TOKEN":           true,
+	"CLAUDE_CLI_CALL_TIMEOUT":           true,
 	"LLM_SERVER_URL":                    true,
 	"LLM_SERVER_KEY":                    true,
 	"LLM_SERVER_MODEL":                  true,

@@ -4,6 +4,7 @@ import (
 	"pentagi/pkg/config"
 	"pentagi/pkg/providers/anthropic"
 	"pentagi/pkg/providers/bedrock"
+	"pentagi/pkg/providers/claudecli"
 	"pentagi/pkg/providers/custom"
 	"pentagi/pkg/providers/deepseek"
 	"pentagi/pkg/providers/gemini"
@@ -161,6 +162,14 @@ var providerRegistry = []registryEntry{
 		NewConfig:   ignoreConfig(minimax.DefaultProviderConfig),
 		New:         minimax.New,
 		BuildConfig: fromData(minimax.BuildProviderConfig),
+	},
+	{
+		Type:        provider.ProviderClaudeCLI,
+		Name:        provider.DefaultProviderNameClaudeCLI,
+		Enabled:     claudecli.Configured,
+		NewConfig:   ignoreConfig(claudecli.DefaultProviderConfig),
+		New:         claudecli.NewFromConfig,
+		BuildConfig: fromData(claudecli.BuildProviderConfig),
 	},
 }
 

@@ -202,6 +202,7 @@ type DefaultProvidersConfig struct {
 	Minimax   *ProviderConfig `json:"minimax,omitempty"`
 	Mistral   *ProviderConfig `json:"mistral,omitempty"`
 	Xai       *ProviderConfig `json:"xai,omitempty"`
+	ClaudeCli *ProviderConfig `json:"claude_cli,omitempty"`
 }
 
 type Flow struct {
@@ -427,6 +428,7 @@ type ProvidersModelsList struct {
 	Minimax   []*ModelConfig `json:"minimax,omitempty"`
 	Mistral   []*ModelConfig `json:"mistral,omitempty"`
 	Xai       []*ModelConfig `json:"xai,omitempty"`
+	ClaudeCli []*ModelConfig `json:"claude_cli,omitempty"`
 }
 
 type ProvidersReadinessStatus struct {
@@ -443,6 +445,7 @@ type ProvidersReadinessStatus struct {
 	Minimax   bool `json:"minimax"`
 	Mistral   bool `json:"mistral"`
 	Xai       bool `json:"xai"`
+	ClaudeCli bool `json:"claude_cli"`
 }
 
 type Query struct {
@@ -1220,6 +1223,7 @@ const (
 	ProviderTypeMinimax   ProviderType = "minimax"
 	ProviderTypeMistral   ProviderType = "mistral"
 	ProviderTypeXai       ProviderType = "xai"
+	ProviderTypeClaudeCli ProviderType = "claude_cli"
 )
 
 var AllProviderType = []ProviderType{
@@ -1236,11 +1240,12 @@ var AllProviderType = []ProviderType{
 	ProviderTypeMinimax,
 	ProviderTypeMistral,
 	ProviderTypeXai,
+	ProviderTypeClaudeCli,
 }
 
 func (e ProviderType) IsValid() bool {
 	switch e {
-	case ProviderTypeOpenai, ProviderTypeAnthropic, ProviderTypeGemini, ProviderTypeBedrock, ProviderTypeOllama, ProviderTypeCustom, ProviderTypeDeepseek, ProviderTypeGlm, ProviderTypeKimi, ProviderTypeQwen, ProviderTypeMinimax, ProviderTypeMistral, ProviderTypeXai:
+	case ProviderTypeOpenai, ProviderTypeAnthropic, ProviderTypeGemini, ProviderTypeBedrock, ProviderTypeOllama, ProviderTypeCustom, ProviderTypeDeepseek, ProviderTypeGlm, ProviderTypeKimi, ProviderTypeQwen, ProviderTypeMinimax, ProviderTypeMistral, ProviderTypeXai, ProviderTypeClaudeCli:
 		return true
 	}
 	return false

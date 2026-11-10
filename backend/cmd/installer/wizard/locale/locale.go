@@ -460,6 +460,7 @@ const (
 	LLMProviderMiniMax       = "MiniMax"
 	LLMProviderMistral       = "Mistral AI"
 	LLMProviderXAI           = "xAI Grok"
+	LLMProviderClaudeCLI     = "Claude Code CLI"
 	LLMProviderCustom        = "Custom"
 	LLMProviderOpenAIDesc    = "Industry-leading GPT models with excellent general performance"
 	LLMProviderAnthropicDesc = "Claude models with superior reasoning and safety features"
@@ -473,6 +474,7 @@ const (
 	LLMProviderMiniMaxDesc   = "MiniMax's M-series models for agentic reasoning and long-context tasks"
 	LLMProviderMistralDesc   = "Mistral AI's Medium, Small and Ministral models through the Mistral chat API"
 	LLMProviderXAIDesc       = "xAI's Grok models through the xAI chat API"
+	LLMProviderClaudeCLIDesc = "The Claude Code CLI logged in on this host, through the local claudeworker"
 	LLMProviderCustomDesc    = "Custom OpenAI-compatible endpoint for maximum flexibility"
 )
 
@@ -760,6 +762,19 @@ LiteLLM Integration:
 • Optional for direct xAI API usage
 
 Setup: Get your API key from https://console.x.ai/`
+
+	LLMFormClaudeCLIHelp = `Uses the Claude Code CLI already logged in on this host, for local single-user installs.
+
+How it works:
+• cmd/claudeworker runs on the host as the logged-in user and starts the CLI per call
+• The CLI's own tools are disabled; PentAGI executes every tool call itself
+• Usage counts against the logged-in Claude subscription
+
+Settings:
+• Base URL: the worker endpoint, unix:///path/to/worker.sock or http://HOST:PORT
+• API Key: the worker's bearer token (the content of its CLAUDE_WORKER_TOKEN_FILE)
+
+Setup: start cmd/claudeworker, then select claude_cli for a flow`
 
 	LLMFormCustomHelp = `Configure any OpenAI-compatible API endpoint for maximum flexibility and integration with existing infrastructure.
 
@@ -2558,6 +2573,9 @@ const (
 	EnvDesc_XAI_API_KEY                       = "xAI API Key"
 	EnvDesc_XAI_SERVER_URL                    = "xAI Server URL"
 	EnvDesc_XAI_PROVIDER                      = "xAI Provider Name Prefix (for LiteLLM, e.g., 'xai')"
+	EnvDesc_CLAUDE_CLI_WORKER_URL             = "Claude CLI Worker URL (unix:///path/worker.sock or http://HOST:PORT)"
+	EnvDesc_CLAUDE_CLI_WORKER_TOKEN           = "Claude CLI Worker Bearer Token"
+	EnvDesc_CLAUDE_CLI_CALL_TIMEOUT           = "Claude CLI Call Timeout (seconds)"
 	EnvDesc_LLM_SERVER_URL                    = "Custom LLM Server URL"
 	EnvDesc_LLM_SERVER_KEY                    = "Custom LLM API Key"
 	EnvDesc_LLM_SERVER_MODEL                  = "Custom LLM Model"

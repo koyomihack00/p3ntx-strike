@@ -206,6 +206,7 @@ export enum PromptValidationErrorType {
 export enum ProviderType {
     Anthropic = 'anthropic',
     Bedrock = 'bedrock',
+    ClaudeCli = 'claude_cli',
     Custom = 'custom',
     Deepseek = 'deepseek',
     Gemini = 'gemini',
@@ -768,6 +769,7 @@ export type SettingsProvidersQuery = {
             minimax: boolean;
             mistral: boolean;
             xai: boolean;
+            claude_cli: boolean;
         };
         default: {
             openai: ProviderConfigFragmentFragment;
@@ -783,6 +785,7 @@ export type SettingsProvidersQuery = {
             minimax: ProviderConfigFragmentFragment | null;
             mistral: ProviderConfigFragmentFragment | null;
             xai: ProviderConfigFragmentFragment | null;
+            claude_cli: ProviderConfigFragmentFragment | null;
         };
         userDefined: Array<ProviderConfigFragmentFragment> | null;
         models: {
@@ -799,6 +802,7 @@ export type SettingsProvidersQuery = {
             minimax: Array<ModelConfigFragmentFragment> | null;
             mistral: Array<ModelConfigFragmentFragment> | null;
             xai: Array<ModelConfigFragmentFragment> | null;
+            claude_cli: Array<ModelConfigFragmentFragment> | null;
         };
     };
 };
@@ -3667,6 +3671,7 @@ export const SettingsProvidersDocument = {
                                             { kind: 'Field', name: { kind: 'Name', value: 'minimax' } },
                                             { kind: 'Field', name: { kind: 'Name', value: 'mistral' } },
                                             { kind: 'Field', name: { kind: 'Name', value: 'xai' } },
+                                            { kind: 'Field', name: { kind: 'Name', value: 'claude_cli' } },
                                         ],
                                     },
                                 },
@@ -3835,6 +3840,19 @@ export const SettingsProvidersDocument = {
                                             {
                                                 kind: 'Field',
                                                 name: { kind: 'Name', value: 'xai' },
+                                                selectionSet: {
+                                                    kind: 'SelectionSet',
+                                                    selections: [
+                                                        {
+                                                            kind: 'FragmentSpread',
+                                                            name: { kind: 'Name', value: 'providerConfigFragment' },
+                                                        },
+                                                    ],
+                                                },
+                                            },
+                                            {
+                                                kind: 'Field',
+                                                name: { kind: 'Name', value: 'claude_cli' },
                                                 selectionSet: {
                                                     kind: 'SelectionSet',
                                                     selections: [
@@ -4026,6 +4044,19 @@ export const SettingsProvidersDocument = {
                                             {
                                                 kind: 'Field',
                                                 name: { kind: 'Name', value: 'xai' },
+                                                selectionSet: {
+                                                    kind: 'SelectionSet',
+                                                    selections: [
+                                                        {
+                                                            kind: 'FragmentSpread',
+                                                            name: { kind: 'Name', value: 'modelConfigFragment' },
+                                                        },
+                                                    ],
+                                                },
+                                            },
+                                            {
+                                                kind: 'Field',
+                                                name: { kind: 'Name', value: 'claude_cli' },
                                                 selectionSet: {
                                                     kind: 'SelectionSet',
                                                     selections: [

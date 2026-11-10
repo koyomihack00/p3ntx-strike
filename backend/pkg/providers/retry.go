@@ -22,7 +22,15 @@ func isDeterministicError(err error) bool {
 		return false
 	}
 
-	return isLocalRefusal(err) || llms.IsContentFilterError(err) || isRejectedRequestStatus(err)
+	return isLocalRefusal(err) || llms.IsContentFilterError(err) || isRejectedRequestStatus(err) ||
+		isMarkedDeterministic(err)
+}
+
+// isMarkedDeterministic lets a provider package declare its own unrecoverable
+// errors without this package importing it.
+func isMarkedDeterministic(err error) bool {
+	var marked interface{ Deterministic() bool }
+	return errors.As(err, &marked) && marked.Deterministic()
 }
 
 // isLocalRefusal reports whether the library decided the request cannot succeed

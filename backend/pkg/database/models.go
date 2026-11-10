@@ -435,6 +435,7 @@ const (
 	ProviderTypeMinimax   ProviderType = "minimax"
 	ProviderTypeMistral   ProviderType = "mistral"
 	ProviderTypeXai       ProviderType = "xai"
+	ProviderTypeClaudeCli ProviderType = "claude_cli"
 )
 
 func (e *ProviderType) Scan(src interface{}) error {

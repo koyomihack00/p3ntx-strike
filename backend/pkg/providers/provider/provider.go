@@ -31,7 +31,7 @@ func (p ProviderType) String() string {
 // Custom fronts behind LLM_SERVER_URL.
 func (p ProviderType) ReasoningProvider() reasoning.Provider {
 	switch p {
-	case ProviderAnthropic:
+	case ProviderAnthropic, ProviderClaudeCLI:
 		return reasoning.ProviderAnthropic
 	case ProviderBedrock:
 		return reasoning.ProviderBedrock
@@ -61,6 +61,7 @@ const (
 	ProviderMiniMax   ProviderType = "minimax"
 	ProviderMistral   ProviderType = "mistral"
 	ProviderXAI       ProviderType = "xai"
+	ProviderClaudeCLI ProviderType = "claude_cli"
 )
 
 // AllProviderTypes enumerates every supported provider type; keep it in sync with
@@ -79,6 +80,7 @@ var AllProviderTypes = ProvidersListTypes{
 	ProviderMiniMax,
 	ProviderMistral,
 	ProviderXAI,
+	ProviderClaudeCLI,
 }
 
 type ProviderName string
@@ -101,6 +103,7 @@ const (
 	DefaultProviderNameMiniMax   ProviderName = ProviderName(ProviderMiniMax)
 	DefaultProviderNameMistral   ProviderName = ProviderName(ProviderMistral)
 	DefaultProviderNameXAI       ProviderName = ProviderName(ProviderXAI)
+	DefaultProviderNameClaudeCLI ProviderName = ProviderName(ProviderClaudeCLI)
 )
 
 type Provider interface {

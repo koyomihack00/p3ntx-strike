@@ -212,6 +212,7 @@ type ComplexityRoot struct {
 	DefaultProvidersConfig struct {
 		Anthropic func(childComplexity int) int
 		Bedrock   func(childComplexity int) int
+		ClaudeCli func(childComplexity int) int
 		Custom    func(childComplexity int) int
 		Deepseek  func(childComplexity int) int
 		Gemini    func(childComplexity int) int
@@ -460,6 +461,7 @@ type ComplexityRoot struct {
 	ProvidersModelsList struct {
 		Anthropic func(childComplexity int) int
 		Bedrock   func(childComplexity int) int
+		ClaudeCli func(childComplexity int) int
 		Custom    func(childComplexity int) int
 		Deepseek  func(childComplexity int) int
 		Gemini    func(childComplexity int) int
@@ -476,6 +478,7 @@ type ComplexityRoot struct {
 	ProvidersReadinessStatus struct {
 		Anthropic func(childComplexity int) int
 		Bedrock   func(childComplexity int) int
+		ClaudeCli func(childComplexity int) int
 		Custom    func(childComplexity int) int
 		Deepseek  func(childComplexity int) int
 		Gemini    func(childComplexity int) int
@@ -1685,6 +1688,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DefaultProvidersConfig.Bedrock(childComplexity), true
+
+	case "DefaultProvidersConfig.claude_cli":
+		if e.complexity.DefaultProvidersConfig.ClaudeCli == nil {
+			break
+		}
+
+		return e.complexity.DefaultProvidersConfig.ClaudeCli(childComplexity), true
 
 	case "DefaultProvidersConfig.custom":
 		if e.complexity.DefaultProvidersConfig.Custom == nil {
@@ -3057,6 +3067,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProvidersModelsList.Bedrock(childComplexity), true
 
+	case "ProvidersModelsList.claude_cli":
+		if e.complexity.ProvidersModelsList.ClaudeCli == nil {
+			break
+		}
+
+		return e.complexity.ProvidersModelsList.ClaudeCli(childComplexity), true
+
 	case "ProvidersModelsList.custom":
 		if e.complexity.ProvidersModelsList.Custom == nil {
 			break
@@ -3147,6 +3164,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProvidersReadinessStatus.Bedrock(childComplexity), true
+
+	case "ProvidersReadinessStatus.claude_cli":
+		if e.complexity.ProvidersReadinessStatus.ClaudeCli == nil {
+			break
+		}
+
+		return e.complexity.ProvidersReadinessStatus.ClaudeCli(childComplexity), true
 
 	case "ProvidersReadinessStatus.custom":
 		if e.complexity.ProvidersReadinessStatus.Custom == nil {
@@ -14992,6 +15016,61 @@ func (ec *executionContext) fieldContext_DefaultProvidersConfig_xai(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _DefaultProvidersConfig_claude_cli(ctx context.Context, field graphql.CollectedField, obj *model.DefaultProvidersConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DefaultProvidersConfig_claude_cli(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClaudeCli, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ProviderConfig)
+	fc.Result = res
+	return ec.marshalOProviderConfig2ᚖpentagiᚋpkgᚋgraphᚋmodelᚐProviderConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DefaultProvidersConfig_claude_cli(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DefaultProvidersConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ProviderConfig_id(ctx, field)
+			case "name":
+				return ec.fieldContext_ProviderConfig_name(ctx, field)
+			case "type":
+				return ec.fieldContext_ProviderConfig_type(ctx, field)
+			case "agents":
+				return ec.fieldContext_ProviderConfig_agents(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ProviderConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ProviderConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProviderConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Flow_id(ctx context.Context, field graphql.CollectedField, obj *model.Flow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Flow_id(ctx, field)
 	if err != nil {
@@ -22753,6 +22832,8 @@ func (ec *executionContext) fieldContext_ProvidersConfig_enabled(_ context.Conte
 				return ec.fieldContext_ProvidersReadinessStatus_mistral(ctx, field)
 			case "xai":
 				return ec.fieldContext_ProvidersReadinessStatus_xai(ctx, field)
+			case "claude_cli":
+				return ec.fieldContext_ProvidersReadinessStatus_claude_cli(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProvidersReadinessStatus", field.Name)
 		},
@@ -22825,6 +22906,8 @@ func (ec *executionContext) fieldContext_ProvidersConfig_default(_ context.Conte
 				return ec.fieldContext_DefaultProvidersConfig_mistral(ctx, field)
 			case "xai":
 				return ec.fieldContext_DefaultProvidersConfig_xai(ctx, field)
+			case "claude_cli":
+				return ec.fieldContext_DefaultProvidersConfig_claude_cli(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DefaultProvidersConfig", field.Name)
 		},
@@ -22952,6 +23035,8 @@ func (ec *executionContext) fieldContext_ProvidersConfig_models(_ context.Contex
 				return ec.fieldContext_ProvidersModelsList_mistral(ctx, field)
 			case "xai":
 				return ec.fieldContext_ProvidersModelsList_xai(ctx, field)
+			case "claude_cli":
+				return ec.fieldContext_ProvidersModelsList_claude_cli(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProvidersModelsList", field.Name)
 		},
@@ -23735,6 +23820,65 @@ func (ec *executionContext) fieldContext_ProvidersModelsList_xai(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ProvidersModelsList_claude_cli(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersModelsList) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProvidersModelsList_claude_cli(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClaudeCli, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ModelConfig)
+	fc.Result = res
+	return ec.marshalOModelConfig2ᚕᚖpentagiᚋpkgᚋgraphᚋmodelᚐModelConfigᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProvidersModelsList_claude_cli(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvidersModelsList",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ModelConfig_name(ctx, field)
+			case "description":
+				return ec.fieldContext_ModelConfig_description(ctx, field)
+			case "releaseDate":
+				return ec.fieldContext_ModelConfig_releaseDate(ctx, field)
+			case "thinking":
+				return ec.fieldContext_ModelConfig_thinking(ctx, field)
+			case "reasoning":
+				return ec.fieldContext_ModelConfig_reasoning(ctx, field)
+			case "price":
+				return ec.fieldContext_ModelConfig_price(ctx, field)
+			case "contextWindow":
+				return ec.fieldContext_ModelConfig_contextWindow(ctx, field)
+			case "maxOutputTokens":
+				return ec.fieldContext_ModelConfig_maxOutputTokens(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProvidersReadinessStatus_openai(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProvidersReadinessStatus_openai(ctx, field)
 	if err != nil {
@@ -24295,6 +24439,50 @@ func (ec *executionContext) _ProvidersReadinessStatus_xai(ctx context.Context, f
 }
 
 func (ec *executionContext) fieldContext_ProvidersReadinessStatus_xai(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvidersReadinessStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvidersReadinessStatus_claude_cli(ctx context.Context, field graphql.CollectedField, obj *model.ProvidersReadinessStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProvidersReadinessStatus_claude_cli(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClaudeCli, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProvidersReadinessStatus_claude_cli(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProvidersReadinessStatus",
 		Field:      field,
@@ -40107,6 +40295,8 @@ func (ec *executionContext) _DefaultProvidersConfig(ctx context.Context, sel ast
 			out.Values[i] = ec._DefaultProvidersConfig_mistral(ctx, field, obj)
 		case "xai":
 			out.Values[i] = ec._DefaultProvidersConfig_xai(ctx, field, obj)
+		case "claude_cli":
+			out.Values[i] = ec._DefaultProvidersConfig_claude_cli(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -41771,6 +41961,8 @@ func (ec *executionContext) _ProvidersModelsList(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._ProvidersModelsList_mistral(ctx, field, obj)
 		case "xai":
 			out.Values[i] = ec._ProvidersModelsList_xai(ctx, field, obj)
+		case "claude_cli":
+			out.Values[i] = ec._ProvidersModelsList_claude_cli(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -41867,6 +42059,11 @@ func (ec *executionContext) _ProvidersReadinessStatus(ctx context.Context, sel a
 			}
 		case "xai":
 			out.Values[i] = ec._ProvidersReadinessStatus_xai(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "claude_cli":
+			out.Values[i] = ec._ProvidersReadinessStatus_claude_cli(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

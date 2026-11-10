@@ -1,0 +1,29 @@
+# Every agent uses the CLI's own model alias: Claude Code resolves it to the current
+# model of that family. Edit per agent in the provider settings.
+simple:
+  model: sonnet
+simple_json:
+  model: sonnet
+  json: true
+primary_agent:
+  model: sonnet
+assistant:
+  model: sonnet
+generator:
+  model: sonnet
+refiner:
+  model: sonnet
+adviser:
+  model: sonnet
+reflector:
+  model: sonnet
+searcher:
+  model: sonnet
+enricher:
+  model: sonnet
+coder:
+  model: sonnet
+installer:
+  model: sonnet
+pentester:
+  model: sonnet

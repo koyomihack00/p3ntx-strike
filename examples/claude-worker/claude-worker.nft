@@ -1,0 +1,26 @@
+#!/usr/sbin/nft -f
+# Review-only. Not loaded by anything in this repository.
+#
+# The worker user may open TCP connections only to the local proxy. The proxy user
+# may reach only TCP 443 and DNS, and never the lab ranges, so the model path can
+# neither touch an engagement target nor be used as a pivot. Adjust the proxy user
+# name and the lab ranges before loading.
+
+define LAB_RANGES = { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16 }
+
+table inet claude_worker
+delete table inet claude_worker
+
+table inet claude_worker {
+	chain output {
+		type filter hook output priority filter; policy accept;
+
+		meta skuid "claude-worker" oifname "lo" tcp dport 3128 accept
+		meta skuid "claude-worker" counter log prefix "claude-worker-deny " drop
+
+		meta skuid "proxy" ip daddr $LAB_RANGES counter log prefix "claude-proxy-lab-deny " drop
+		meta skuid "proxy" udp dport 53 accept
+		meta skuid "proxy" tcp dport { 53, 443 } accept
+		meta skuid "proxy" counter log prefix "claude-proxy-deny " drop
+	}
+}

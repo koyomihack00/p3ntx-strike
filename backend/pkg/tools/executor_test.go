@@ -27,74 +27,6 @@ import (
 	"github.com/vxcontrol/langchaingo/llms"
 )
 
-// executorMsgLog stands in for the message log and, like the database, refuses a write through a done context.
-type executorMsgLog struct {
-	putErr    error
-	updateErr error
-
-	result string
-	format database.MsglogResultFormat
-}
-
-func (l *executorMsgLog) PutMsg(
-	ctx context.Context, _ database.MsglogType, _, _ *int64, _ int64, _, _ string,
-) (int64, error) {
-	if err := ctx.Err(); err != nil {
-		return 0, err
-	}
-	if l.putErr != nil {
-		return 0, l.putErr
-	}
-	return 1, nil
-}
-
-func (l *executorMsgLog) UpdateMsgResult(
-	ctx context.Context, _ int64, _ int64, result string, format database.MsglogResultFormat,
-) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	l.result, l.format = result, format
-	return l.updateErr
-}
-
-// executorToolCallLog stands in for the tool call log and, like the database, refuses a write through a done context.
-type executorToolCallLog struct {
-	putErr     error
-	successErr error
-
-	success []string
-	failed  []string
-}
-
-func (l *executorToolCallLog) PutLog(
-	ctx context.Context, _, _ string, _ json.RawMessage, _, _ *int64,
-) (int64, error) {
-	if err := ctx.Err(); err != nil {
-		return 0, err
-	}
-	if l.putErr != nil {
-		return 0, l.putErr
-	}
-	return 1, nil
-}
-
-func (l *executorToolCallLog) UpdateLogSuccess(ctx context.Context, _ int64, result string, _ float64) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	l.success = append(l.success, result)
-	return l.successErr
-}
-
-func (l *executorToolCallLog) UpdateLogFailed(ctx context.Context, _ int64, result string, _ float64) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	l.failed = append(l.failed, result)
-	return nil
-}
-
 // executorLangfuse stands in for the Langfuse server and client behind a real observer, keeping every event sent.
 type executorLangfuse struct {
 	observer langfuse.Observer
@@ -279,6 +211,85 @@ func TestExecutor_Execute_AnswersACallItCannotRunWithACorrection(t *testing.T) {
 	}
 }
 
+func TestExecutor_Execute_RefusesACallBeforeItsHandlerRuns(t *testing.T) {
+	obs.InitObserver(context.Background(), nil, nil, []logrus.Level{})
+
+	args := json.RawMessage(`{"input":"curl http://203.0.113.9/","message":"Fetch the login page."}`)
+
+	cases := map[string]struct {
+		authorizer CallAuthorizer
+		reason     string
+	}{
+		"the gate refuses it": {authorizer: &refuseEveryCall{}, reason: "target 203.0.113.9 is out of scope"},
+		"no gate was given":   {authorizer: nil, reason: "no scope authorizer is configured"},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			ran := false
+			mlp, tclp := &executorMsgLog{}, &executorToolCallLog{}
+			ce := &customExecutor{
+				flowID:     42,
+				agent:      database.MsgchainTypePentester,
+				authorizer: tc.authorizer,
+				mlp:        mlp,
+				tclp:       tclp,
+				handlers: map[string]ExecutorHandler{TerminalToolName: func(context.Context, string, json.RawMessage) (string, error) {
+					ran = true
+					return "page", nil
+				}},
+			}
+
+			result, err := ce.Execute(t.Context(), 1, "call-1", TerminalToolName, TerminalToolName, "", args)
+
+			if err != nil {
+				t.Fatalf("a refusal must be an answer the model reads, not an error the caller retries: %v", err)
+			}
+			if ran {
+				t.Fatal("the handler ran although the call was refused")
+			}
+			if !strings.Contains(result, "refused") || !strings.Contains(result, tc.reason) {
+				t.Errorf("the model must be told the call was refused and why, got %q", result)
+			}
+			if len(tclp.success) != 0 || len(tclp.failed) != 1 || tclp.failed[0] != result {
+				t.Errorf("the tool call log must record exactly the refusal, got success %q failed %q", tclp.success, tclp.failed)
+			}
+			if mlp.result != result {
+				t.Errorf("the operator's message log must show the refusal, got %q", mlp.result)
+			}
+		})
+	}
+}
+
+func TestExecutor_Execute_HandsTheGateTheExactCall(t *testing.T) {
+	obs.InitObserver(context.Background(), nil, nil, []logrus.Level{})
+
+	gate := &refuseEveryCall{}
+	ce := &customExecutor{
+		flowID:     42,
+		agent:      database.MsgchainTypeInstaller,
+		authorizer: gate,
+		mlp:        &executorMsgLog{},
+		tclp:       &executorToolCallLog{},
+		handlers: map[string]ExecutorHandler{BrowserToolName: func(context.Context, string, json.RawMessage) (string, error) {
+			return "", nil
+		}},
+	}
+	args := json.RawMessage(`{"url":"http://203.0.113.9/","action":"markdown","message":"m"}`)
+
+	if _, err := ce.Execute(t.Context(), 1, "call-1", BrowserToolName, "obs", "", args); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	seen := gate.seen()
+	if len(seen) != 1 {
+		t.Fatalf("the gate was asked %d times, want once", len(seen))
+	}
+	if seen[0].FlowID != 42 || seen[0].Agent != "installer" || seen[0].Tool != "browser" || string(seen[0].Args) != string(args) {
+		t.Errorf("the gate judged a different call than the one that would run: %+v", seen[0])
+	}
+}
+
 func TestExecutor_Execute_ReportsALoggingFailureOnlyBeforeTheToolRuns(t *testing.T) {
 	obs.InitObserver(context.Background(), nil, nil, []logrus.Level{})
 
@@ -314,10 +325,11 @@ func TestExecutor_Execute_ReportsALoggingFailureOnlyBeforeTheToolRuns(t *testing
 		t.Run(name, func(t *testing.T) {
 			var runs atomic.Int32
 			ce := &customExecutor{
-				flowID:   1,
-				mlp:      tc.mlp,
-				tclp:     tc.tclp,
-				replacer: identityReplacer{},
+				authorizer: allowEveryCall{},
+				flowID:     1,
+				mlp:        tc.mlp,
+				tclp:       tc.tclp,
+				replacer:   identityReplacer{},
 				handlers: map[string]ExecutorHandler{
 					TerminalToolName: func(context.Context, string, json.RawMessage) (string, error) {
 						runs.Add(1)
@@ -383,10 +395,11 @@ func TestExecutor_Execute_ClosesTheToolCallLogEvenAfterTheFlowStops(t *testing.T
 
 			tclp := &executorToolCallLog{}
 			ce := &customExecutor{
-				flowID:   1,
-				mlp:      &executorMsgLog{},
-				tclp:     tclp,
-				replacer: identityReplacer{},
+				authorizer: allowEveryCall{},
+				flowID:     1,
+				mlp:        &executorMsgLog{},
+				tclp:       tclp,
+				replacer:   identityReplacer{},
 				handlers: map[string]ExecutorHandler{
 					TerminalToolName: func(context.Context, string, json.RawMessage) (string, error) {
 						if tc.stopFlow {
@@ -419,9 +432,10 @@ func TestExecutor_Execute_ClosesTheToolCallLogEvenAfterTheFlowStops(t *testing.T
 func TestExecutor_Execute_CleansTheHandlersOutputOfBytesPostgresRejects(t *testing.T) {
 	tclp, mlp := &executorToolCallLog{}, &executorMsgLog{}
 	ce := &customExecutor{
-		mlp:      mlp,
-		tclp:     tclp,
-		replacer: identityReplacer{},
+		authorizer: allowEveryCall{},
+		mlp:        mlp,
+		tclp:       tclp,
+		replacer:   identityReplacer{},
 		handlers: map[string]ExecutorHandler{
 			TerminalToolName: func(context.Context, string, json.RawMessage) (string, error) {
 				return "uid=0\xff(root)\x00", nil
@@ -488,9 +502,10 @@ func TestExecutor_Execute_SummarizesALargeResultOrTruncatesIt(t *testing.T) {
 			var prompt string
 			tclp, mlp := &executorToolCallLog{}, &executorMsgLog{}
 			ce := &customExecutor{
-				mlp:      mlp,
-				tclp:     tclp,
-				replacer: identityReplacer{},
+				authorizer: allowEveryCall{},
+				mlp:        mlp,
+				tclp:       tclp,
+				replacer:   identityReplacer{},
 				handlers: map[string]ExecutorHandler{
 					BrowserToolName: func(context.Context, string, json.RawMessage) (string, error) {
 						return page, nil
@@ -543,7 +558,8 @@ func TestExecutor_Execute_StopsSummarizingWhenTheFlowStops(t *testing.T) {
 	tclp := &executorToolCallLog{}
 
 	ce := &customExecutor{
-		tclp: tclp,
+		authorizer: allowEveryCall{},
+		tclp:       tclp,
 		handlers: map[string]ExecutorHandler{
 			BrowserToolName: func(context.Context, string, json.RawMessage) (string, error) {
 				return strings.Repeat("x", DefaultResultSizeLimit+1), nil
@@ -669,9 +685,10 @@ func TestExecutor_Execute_AnonymizesWhatEveryAgentStoresInMemory(t *testing.T) {
 
 			log := &recordingVectorStoreLog{}
 			fte := &flowToolsExecutor{
-				flowID: 1,
-				cfg:    &config.Config{},
-				db:     &fakeContainerDB{row: &database.Container{ID: 1, LocalID: sql.NullString{String: "primary", Valid: true}}},
+				authorizer: allowEveryCall{},
+				flowID:     1,
+				cfg:        &config.Config{},
+				db:         &fakeContainerDB{row: &database.Container{ID: 1, LocalID: sql.NullString{String: "primary", Valid: true}}},
 				docker: &fakeDockerClient{
 					isRunning:      true,
 					execCreateResp: client.ExecCreateResult{ID: "exec"},
@@ -745,15 +762,16 @@ func TestExecutor_Execute_StoresAMemoryToolResultUnderItsScope(t *testing.T) {
 			store := newFakeVectorStore(t, conn, &fakeEmbedder{})
 			vslp := &recordingVectorStoreLog{}
 			ce := &customExecutor{
-				userID:    7,
-				flowID:    1,
-				taskID:    &taskID,
-				subtaskID: &subtaskID,
-				mlp:       &executorMsgLog{},
-				tclp:      &executorToolCallLog{},
-				replacer:  identityReplacer{},
-				store:     store,
-				vslp:      vslp,
+				authorizer: allowEveryCall{},
+				userID:     7,
+				flowID:     1,
+				taskID:     &taskID,
+				subtaskID:  &subtaskID,
+				mlp:        &executorMsgLog{},
+				tclp:       &executorToolCallLog{},
+				replacer:   identityReplacer{},
+				store:      store,
+				vslp:       vslp,
 				handlers: map[string]ExecutorHandler{
 					tc.tool: func(context.Context, string, json.RawMessage) (string, error) { return "uid=0(root)", nil },
 				},
@@ -835,10 +853,11 @@ func TestExecutor_Execute_ObservesEachToolTypeUnderTheCallersTrace(t *testing.T)
 
 			var ranIn []langfuse.Observation
 			ce := &customExecutor{
-				flowID:    1,
-				taskID:    &taskID,
-				subtaskID: &subtaskID,
-				tclp:      &executorToolCallLog{},
+				authorizer: allowEveryCall{},
+				flowID:     1,
+				taskID:     &taskID,
+				subtaskID:  &subtaskID,
+				tclp:       &executorToolCallLog{},
 				handlers: map[string]ExecutorHandler{
 					tc.tool: func(ctx context.Context, _ string, args json.RawMessage) (string, error) {
 						_, observation := obs.Observer.NewObservation(ctx)
@@ -940,8 +959,9 @@ func TestExecutor_IsFunctionExists_AnswersFromTheHandlers(t *testing.T) {
 	t.Parallel()
 
 	ce := &customExecutor{
-		handlers: map[string]ExecutorHandler{TerminalToolName: nil, FinalyToolName: nil},
-		barriers: map[string]struct{}{FinalyToolName: {}, AskUserToolName: {}},
+		authorizer: allowEveryCall{},
+		handlers:   map[string]ExecutorHandler{TerminalToolName: nil, FinalyToolName: nil},
+		barriers:   map[string]struct{}{FinalyToolName: {}, AskUserToolName: {}},
 	}
 
 	for name, want := range map[string]bool{
@@ -957,8 +977,9 @@ func TestExecutor_IsBarrierFunction_RecognisesOnlyTheConfiguredBarriers(t *testi
 	t.Parallel()
 
 	ce := &customExecutor{
-		handlers: map[string]ExecutorHandler{TerminalToolName: nil, FinalyToolName: nil},
-		barriers: map[string]struct{}{FinalyToolName: {}, AskUserToolName: {}},
+		authorizer: allowEveryCall{},
+		handlers:   map[string]ExecutorHandler{TerminalToolName: nil, FinalyToolName: nil},
+		barriers:   map[string]struct{}{FinalyToolName: {}, AskUserToolName: {}},
 	}
 
 	for name, want := range map[string]bool{
@@ -1234,7 +1255,8 @@ func TestExecutor_Execute_LogsAMissingToolButNotTheSummarizationMarker(t *testin
 		t.Run(tc.name, func(t *testing.T) {
 			hook := captureLogrus(t)
 			ce := &customExecutor{
-				flowID: 1, mlp: &executorMsgLog{}, tclp: &executorToolCallLog{},
+				authorizer: allowEveryCall{},
+				flowID:     1, mlp: &executorMsgLog{}, tclp: &executorToolCallLog{},
 				replacer: identityReplacer{},
 				handlers: map[string]ExecutorHandler{TerminalToolName: func(
 					context.Context, string, json.RawMessage,
@@ -1271,7 +1293,8 @@ func TestExecutor_Execute_WritesTheMessageResultEvenAfterTheFlowStops(t *testing
 
 	tclp, mlp := &executorToolCallLog{}, &executorMsgLog{}
 	ce := &customExecutor{
-		flowID: 1, mlp: mlp, tclp: tclp, replacer: identityReplacer{},
+		authorizer: allowEveryCall{},
+		flowID:     1, mlp: mlp, tclp: tclp, replacer: identityReplacer{},
 		handlers: map[string]ExecutorHandler{TerminalToolName: func(
 			context.Context, string, json.RawMessage,
 		) (string, error) {

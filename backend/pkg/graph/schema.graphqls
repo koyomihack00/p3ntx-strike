@@ -26,6 +26,7 @@ enum ProviderType {
   minimax
   mistral
   xai
+  claude_cli
 }
 
 # Reasoning effort levels for advanced AI models
@@ -756,6 +757,7 @@ type ProvidersModelsList {
   minimax: [ModelConfig!]
   mistral: [ModelConfig!]
   xai: [ModelConfig!]
+  claude_cli: [ModelConfig!]
 }
 
 # Provider availability status
@@ -773,6 +775,7 @@ type ProvidersReadinessStatus {
   minimax: Boolean!
   mistral: Boolean!
   xai: Boolean!
+  claude_cli: Boolean!
 }
 
 # Default provider configurations
@@ -790,6 +793,7 @@ type DefaultProvidersConfig {
   minimax: ProviderConfig
   mistral: ProviderConfig
   xai: ProviderConfig
+  claude_cli: ProviderConfig
 }
 
 # Complete providers configuration

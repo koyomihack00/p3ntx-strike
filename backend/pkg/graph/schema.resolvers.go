@@ -2218,6 +2218,8 @@ func (r *queryResolver) SettingsProviders(ctx context.Context) (*model.Providers
 			if models, ok := providers.BundledCatalogs()[prvtype]; ok {
 				config.Models.Xai = converter.ConvertModelsWithPrefix(models, prvtype.ReasoningProvider(), prefix)
 			}
+		case provider.ProviderClaudeCLI:
+			config.Default.ClaudeCli = mpcfg
 		}
 	}
 
@@ -2260,6 +2262,11 @@ func (r *queryResolver) SettingsProviders(ctx context.Context) (*model.Providers
 			config.Enabled.Mistral = true
 		case provider.ProviderXAI:
 			config.Enabled.Xai = true
+		case provider.ProviderClaudeCLI:
+			config.Enabled.ClaudeCli = true
+			if p, ok := defaultProviders[provider.DefaultProviderNameClaudeCLI]; ok {
+				config.Models.ClaudeCli = converter.ConvertModelsWithPrefix(p.GetModels(), prvtype.ReasoningProvider(), prefix)
+			}
 		}
 	}
 

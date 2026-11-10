@@ -68,6 +68,7 @@ func TestConfig_GetSecretPatterns_FindsEachSecretVerbatim(t *testing.T) {
 		MiniMaxAPIKey:           "minimax-123",
 		MistralAPIKey:           "mistral-123",
 		XAIAPIKey:               "xai-123",
+		ClaudeCLIWorkerToken:    "cw.tok+en/with*meta?chars",
 		GoogleAPIKey:            "AIza123",
 		GoogleCXKey:             "1234567890abcdef:ghijklmnopqrstuv",
 		OAuthGoogleClientID:     "123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
@@ -148,6 +149,8 @@ func clearConfigEnv(t *testing.T) {
 		"MINIMAX_API_KEY", "MINIMAX_SERVER_URL", "MINIMAX_PROVIDER",
 		"MISTRAL_API_KEY", "MISTRAL_SERVER_URL", "MISTRAL_PROVIDER",
 		"XAI_API_KEY", "XAI_SERVER_URL", "XAI_PROVIDER",
+		"CLAUDE_CLI_WORKER_URL", "CLAUDE_CLI_WORKER_TOKEN", "CLAUDE_CLI_CALL_TIMEOUT",
+		"SCOPE_GATE_CIDRS", "SCOPE_GATE_HOSTS", "SCOPE_GATE_EXTERNAL_SEARCH",
 		"DUCKDUCKGO_ENABLED", "DUCKDUCKGO_REGION", "DUCKDUCKGO_SAFESEARCH", "DUCKDUCKGO_TIME_RANGE",
 		"SPLOITUS_ENABLED",
 		"GOOGLE_API_KEY", "GOOGLE_CX_KEY", "GOOGLE_LR_KEY",
@@ -190,6 +193,9 @@ func TestConfig_NewConfig_FillsDefaultsForAnEmptyEnvironment(t *testing.T) {
 	assert.Equal(t, []string{"*"}, config.CorsOrigins)
 	assert.Equal(t, 600, config.HTTPClientTimeout)
 	assert.Equal(t, 1200, config.TerminalToolTimeout)
+	assert.Empty(t, config.ScopeGateCIDRs)
+	assert.Empty(t, config.ScopeGateHosts)
+	assert.Equal(t, "deny", config.ScopeGateExternalSearch)
 	assert.Equal(t, "debian:latest", config.DockerDefaultImage)
 	assert.Equal(t, "vxcontrol/kali-linux", config.DockerDefaultImageForPentest)
 

@@ -1,0 +1,64 @@
+# Review-only. Not installed or enabled by anything in this repository.
+[Unit]
+Description=Claude Code CLI worker for the PentAGI claudecli adapter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=claude-worker
+Group=claude-worker
+EnvironmentFile=/etc/claude-worker/worker.env
+ExecStart=/opt/claude-worker/bin/claudeworker
+Restart=on-failure
+RestartSec=5
+
+# /run/claude-worker holds the socket; calls/ is the work root, which the worker
+# requires to be private to its user.
+RuntimeDirectory=claude-worker claude-worker/calls
+RuntimeDirectoryMode=0700
+UMask=0077
+
+# A CLI process that left the worker's process group still dies with the unit.
+KillMode=control-group
+TimeoutStopSec=20
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+# The CLI's JavaScript runtime JITs; W^X enforcement would break it.
+MemoryDenyWriteExecute=no
+
+ReadWritePaths=/run/claude-worker
+ReadOnlyPaths=/etc/claude-worker /opt/claude-worker /opt/claude-code
+InaccessiblePaths=-/var/run/docker.sock -/run/docker.sock -/run/containerd
+
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Egress only to the local allowlisting proxy; see egress-proxy.md.
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+TasksMax=256
+MemoryMax=4G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

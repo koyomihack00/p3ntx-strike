@@ -187,6 +187,7 @@ type flowToolsExecutor struct {
 	functions      *Functions
 	replacer       anonymizer.Replacer
 
+	authorizer  CallAuthorizer
 	definitions map[string]llms.FunctionDefinition
 	handlers    map[string]ExecutorHandler
 }
@@ -336,6 +337,9 @@ type FlowToolsExecutor interface {
 	SetToolCallLogProvider(tclp ToolCallLogProvider)
 	SetKnowledgeProvider(knp KnowledgeProvider)
 	SetGraphitiClient(client *graphiti.Client)
+	// SetCallAuthorizer installs the gate every executor built afterwards consults;
+	// until it is called, those executors refuse every tool call.
+	SetCallAuthorizer(authorizer CallAuthorizer)
 
 	Prepare(ctx context.Context) error
 	Release(ctx context.Context) error
@@ -476,6 +480,10 @@ func (fte *flowToolsExecutor) SetKnowledgeProvider(knp KnowledgeProvider) {
 
 func (fte *flowToolsExecutor) SetGraphitiClient(client *graphiti.Client) {
 	fte.graphitiClient = client
+}
+
+func (fte *flowToolsExecutor) SetCallAuthorizer(authorizer CallAuthorizer) {
+	fte.authorizer = authorizer
 }
 
 func (fte *flowToolsExecutor) Prepare(ctx context.Context) error {
@@ -793,6 +801,7 @@ func (fte *flowToolsExecutor) GetCustomExecutor(cfg CustomExecutorConfig) (Conte
 	return &customExecutor{
 		userID:      fte.userID,
 		flowID:      fte.flowID,
+		authorizer:  fte.authorizer,
 		taskID:      cfg.TaskID,
 		subtaskID:   cfg.SubtaskID,
 		mlp:         fte.mlp,
@@ -979,6 +988,8 @@ func (fte *flowToolsExecutor) GetAssistantExecutor(cfg AssistantExecutorConfig) 
 	ce := &customExecutor{
 		userID:      fte.userID,
 		flowID:      fte.flowID,
+		agent:       database.MsgchainTypeAssistant,
+		authorizer:  fte.authorizer,
 		mlp:         fte.mlp,
 		tclp:        fte.tclp,
 		replacer:    fte.replacer,
@@ -1024,16 +1035,18 @@ func (fte *flowToolsExecutor) GetPrimaryExecutor(cfg PrimaryExecutorConfig) (Con
 	}
 
 	ce := &customExecutor{
-		userID:    fte.userID,
-		flowID:    fte.flowID,
-		taskID:    &cfg.TaskID,
-		subtaskID: &cfg.SubtaskID,
-		mlp:       fte.mlp,
-		tclp:      fte.tclp,
-		replacer:  fte.replacer,
-		vslp:      fte.vslp,
-		db:        fte.db,
-		store:     fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypePrimaryAgent,
+		authorizer: fte.authorizer,
+		taskID:     &cfg.TaskID,
+		subtaskID:  &cfg.SubtaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[FinalyToolName],
 			registryDefinitions[AdviceToolName],
@@ -1102,16 +1115,18 @@ func (fte *flowToolsExecutor) GetInstallerExecutor(cfg InstallerExecutorConfig) 
 	)
 
 	ce := &customExecutor{
-		userID:    fte.userID,
-		flowID:    fte.flowID,
-		taskID:    cfg.TaskID,
-		subtaskID: cfg.SubtaskID,
-		mlp:       fte.mlp,
-		tclp:      fte.tclp,
-		replacer:  fte.replacer,
-		vslp:      fte.vslp,
-		db:        fte.db,
-		store:     fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypeInstaller,
+		authorizer: fte.authorizer,
+		taskID:     cfg.TaskID,
+		subtaskID:  cfg.SubtaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[MaintenanceResultToolName],
 			registryDefinitions[AdviceToolName],
@@ -1210,16 +1225,18 @@ func (fte *flowToolsExecutor) GetCoderExecutor(cfg CoderExecutorConfig) (Context
 	)
 
 	ce := &customExecutor{
-		userID:    fte.userID,
-		flowID:    fte.flowID,
-		taskID:    cfg.TaskID,
-		subtaskID: cfg.SubtaskID,
-		mlp:       fte.mlp,
-		tclp:      fte.tclp,
-		replacer:  fte.replacer,
-		vslp:      fte.vslp,
-		db:        fte.db,
-		store:     fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypeCoder,
+		authorizer: fte.authorizer,
+		taskID:     cfg.TaskID,
+		subtaskID:  cfg.SubtaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[CodeResultToolName],
 			registryDefinitions[AdviceToolName],
@@ -1336,16 +1353,18 @@ func (fte *flowToolsExecutor) GetPentesterExecutor(cfg PentesterExecutorConfig) 
 	)
 
 	ce := &customExecutor{
-		userID:    fte.userID,
-		flowID:    fte.flowID,
-		taskID:    cfg.TaskID,
-		subtaskID: cfg.SubtaskID,
-		mlp:       fte.mlp,
-		tclp:      fte.tclp,
-		replacer:  fte.replacer,
-		vslp:      fte.vslp,
-		db:        fte.db,
-		store:     fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypePentester,
+		authorizer: fte.authorizer,
+		taskID:     cfg.TaskID,
+		subtaskID:  cfg.SubtaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[HackResultToolName],
 			registryDefinitions[AdviceToolName],
@@ -1437,16 +1456,18 @@ func (fte *flowToolsExecutor) GetSearcherExecutor(cfg SearcherExecutorConfig) (C
 	}
 
 	ce := &customExecutor{
-		userID:    fte.userID,
-		flowID:    fte.flowID,
-		taskID:    cfg.TaskID,
-		subtaskID: cfg.SubtaskID,
-		mlp:       fte.mlp,
-		tclp:      fte.tclp,
-		replacer:  fte.replacer,
-		vslp:      fte.vslp,
-		db:        fte.db,
-		store:     fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypeSearcher,
+		authorizer: fte.authorizer,
+		taskID:     cfg.TaskID,
+		subtaskID:  cfg.SubtaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[SearchResultToolName],
 			registryDefinitions[MemoristToolName],
@@ -1531,15 +1552,17 @@ func (fte *flowToolsExecutor) GetGeneratorExecutor(cfg GeneratorExecutorConfig) 
 	)
 
 	ce := &customExecutor{
-		userID:   fte.userID,
-		flowID:   fte.flowID,
-		taskID:   &cfg.TaskID,
-		mlp:      fte.mlp,
-		tclp:     fte.tclp,
-		replacer: fte.replacer,
-		vslp:     fte.vslp,
-		db:       fte.db,
-		store:    fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypeGenerator,
+		authorizer: fte.authorizer,
+		taskID:     &cfg.TaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[MemoristToolName],
 			registryDefinitions[SearchToolName],
@@ -1601,15 +1624,17 @@ func (fte *flowToolsExecutor) GetRefinerExecutor(cfg RefinerExecutorConfig) (Con
 	)
 
 	ce := &customExecutor{
-		userID:   fte.userID,
-		flowID:   fte.flowID,
-		taskID:   &cfg.TaskID,
-		mlp:      fte.mlp,
-		tclp:     fte.tclp,
-		replacer: fte.replacer,
-		vslp:     fte.vslp,
-		db:       fte.db,
-		store:    fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypeRefiner,
+		authorizer: fte.authorizer,
+		taskID:     &cfg.TaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[MemoristToolName],
 			registryDefinitions[SearchToolName],
@@ -1667,16 +1692,18 @@ func (fte *flowToolsExecutor) GetMemoristExecutor(cfg MemoristExecutorConfig) (C
 	)
 
 	ce := &customExecutor{
-		userID:    fte.userID,
-		flowID:    fte.flowID,
-		taskID:    cfg.TaskID,
-		subtaskID: cfg.SubtaskID,
-		mlp:       fte.mlp,
-		tclp:      fte.tclp,
-		replacer:  fte.replacer,
-		vslp:      fte.vslp,
-		db:        fte.db,
-		store:     fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypeMemorist,
+		authorizer: fte.authorizer,
+		taskID:     cfg.TaskID,
+		subtaskID:  cfg.SubtaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[MemoristResultToolName],
 			registryDefinitions[TerminalToolName],
@@ -1742,16 +1769,18 @@ func (fte *flowToolsExecutor) GetEnricherExecutor(cfg EnricherExecutorConfig) (C
 	)
 
 	ce := &customExecutor{
-		userID:    fte.userID,
-		flowID:    fte.flowID,
-		taskID:    cfg.TaskID,
-		subtaskID: cfg.SubtaskID,
-		mlp:       fte.mlp,
-		tclp:      fte.tclp,
-		replacer:  fte.replacer,
-		vslp:      fte.vslp,
-		db:        fte.db,
-		store:     fte.store,
+		userID:     fte.userID,
+		flowID:     fte.flowID,
+		agent:      database.MsgchainTypeEnricher,
+		authorizer: fte.authorizer,
+		taskID:     cfg.TaskID,
+		subtaskID:  cfg.SubtaskID,
+		mlp:        fte.mlp,
+		tclp:       fte.tclp,
+		replacer:   fte.replacer,
+		vslp:       fte.vslp,
+		db:         fte.db,
+		store:      fte.store,
 		definitions: []llms.FunctionDefinition{
 			registryDefinitions[EnricherResultToolName],
 			registryDefinitions[TerminalToolName],
@@ -1816,6 +1845,8 @@ func (fte *flowToolsExecutor) GetReporterExecutor(cfg ReporterExecutorConfig) (C
 	return &customExecutor{
 		userID:      fte.userID,
 		flowID:      fte.flowID,
+		agent:       database.MsgchainTypeReporter,
+		authorizer:  fte.authorizer,
 		taskID:      cfg.TaskID,
 		subtaskID:   cfg.SubtaskID,
 		mlp:         fte.mlp,

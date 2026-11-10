@@ -75,6 +75,16 @@ type Config struct {
 	LLMFallbackProvider       string `env:"LLM_FALLBACK_PROVIDER"`
 	TerminalToolTimeout       int    `env:"TERMINAL_TOOL_TIMEOUT" envDefault:"1200"`
 
+	// === Scope Gate ===
+	// The engagement scope every agent tool call is judged against, comma-separated.
+	// Empty means nothing is in scope: only calls that name no target can run.
+	ScopeGateCIDRs []string `env:"SCOPE_GATE_CIDRS" envSeparator:","`
+	// ScopeGateHosts takes exact names, or "*.name" for strict subdomains of name.
+	ScopeGateHosts []string `env:"SCOPE_GATE_HOSTS" envSeparator:","`
+	// ScopeGateExternalSearch is "allow" or "deny" for the tools that send a query
+	// to a third-party search service.
+	ScopeGateExternalSearch string `env:"SCOPE_GATE_EXTERNAL_SEARCH" envDefault:"deny"`
+
 	// === API Server Configuration ===
 	ServerPort   int    `env:"SERVER_PORT" envDefault:"8080"`
 	ServerHost   string `env:"SERVER_HOST" envDefault:"0.0.0.0"`
@@ -199,6 +209,13 @@ type Config struct {
 	XAIAPIKey    string `env:"XAI_API_KEY"`
 	XAIServerURL string `env:"XAI_SERVER_URL" envDefault:"https://api.x.ai/v1"`
 	XAIProvider  string `env:"XAI_PROVIDER"`
+
+	// Claude Code CLI provider, served by cmd/claudeworker. The URL is http(s)://host:port
+	// or unix:///path/to/worker.sock; the provider is enabled only when both are set.
+	ClaudeCLIWorkerURL   string `env:"CLAUDE_CLI_WORKER_URL"`
+	ClaudeCLIWorkerToken string `env:"CLAUDE_CLI_WORKER_TOKEN"`
+	// ClaudeCLICallTimeout bounds one CLI call, in seconds.
+	ClaudeCLICallTimeout int `env:"CLAUDE_CLI_CALL_TIMEOUT" envDefault:"600"`
 
 	// === Search Engine: DuckDuckGo ===
 	DuckDuckGoEnabled    bool   `env:"DUCKDUCKGO_ENABLED" envDefault:"true"`
@@ -517,6 +534,7 @@ func (c *Config) GetSecretPatterns() []patterns.Pattern {
 		{c.MiniMaxAPIKey, "MiniMax Key"},
 		{c.MistralAPIKey, "Mistral Key"},
 		{c.XAIAPIKey, "xAI Key"},
+		{c.ClaudeCLIWorkerToken, "Claude CLI Worker Token"},
 		{c.GoogleAPIKey, "Google API Key"},
 		{c.GoogleCXKey, "Google CX Key"},
 		{c.OAuthGoogleClientID, "Google Client ID"},

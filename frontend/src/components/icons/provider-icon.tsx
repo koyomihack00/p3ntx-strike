@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 
 import Anthropic from './anthropic';
 import Bedrock from './bedrock';
+import ClaudeCli from './claude-cli';
 import Custom from './custom';
 import DeepSeek from './deepseek';
 import Gemini from './gemini';
@@ -34,6 +35,7 @@ interface ProviderIconProps {
 export const providerIcons: Record<ProviderType, ProviderIconConfig> = {
     [ProviderType.Anthropic]: { className: 'text-purple-500', icon: Anthropic },
     [ProviderType.Bedrock]: { className: 'text-blue-500', icon: Bedrock },
+    [ProviderType.ClaudeCli]: { className: 'text-orange-400', icon: ClaudeCli },
     [ProviderType.Custom]: { className: 'text-blue-500', icon: Custom },
     [ProviderType.Deepseek]: { className: 'text-blue-600', icon: DeepSeek },
     [ProviderType.Gemini]: { className: 'text-blue-500', icon: Gemini },

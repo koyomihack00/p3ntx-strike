@@ -152,6 +152,10 @@ func (m *LLMProviderFormModel) BuildForm() tea.Cmd {
 		fields = append(fields, m.createAPIKeyField(config))
 		fields = append(fields, m.createProviderNameField(config))
 
+	case LLMProviderClaudeCLI:
+		fields = append(fields, m.createBaseURLField(config))
+		fields = append(fields, m.createAPIKeyField(config))
+
 	case LLMProviderCustom:
 		fields = append(fields, m.createBaseURLField(config))
 		fields = append(fields, m.createAPIKeyField(config))
@@ -483,6 +487,8 @@ func (m *LLMProviderFormModel) GetFormDescription() string {
 		return locale.LLMProviderMistralDesc
 	case LLMProviderXAI:
 		return locale.LLMProviderXAIDesc
+	case LLMProviderClaudeCLI:
+		return locale.LLMProviderClaudeCLIDesc
 	case LLMProviderCustom:
 		return locale.LLMProviderCustomDesc
 	default:
@@ -516,6 +522,8 @@ func (m *LLMProviderFormModel) GetFormName() string {
 		return locale.LLMProviderMistral
 	case LLMProviderXAI:
 		return locale.LLMProviderXAI
+	case LLMProviderClaudeCLI:
+		return locale.LLMProviderClaudeCLI
 	case LLMProviderCustom:
 		return locale.LLMProviderCustom
 	default:
@@ -665,6 +673,16 @@ func (m *LLMProviderFormModel) GetCurrentConfiguration() string {
 				locale.LLMFormFieldLoadModelsEnabled, m.GetStyles().Info.Render(config.LoadModelsEnabled.Value)))
 		}
 
+	case LLMProviderClaudeCLI:
+		if config.BaseURL.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldBaseURL, m.GetStyles().Info.Render(config.BaseURL.Value)))
+		}
+		if config.APIKey.Value != "" {
+			sections = append(sections, fmt.Sprintf("• %s: %s",
+				locale.LLMFormFieldAPIKey, m.GetStyles().Muted.Render(getMaskedValue(config.APIKey.Value))))
+		}
+
 	case LLMProviderDeepSeek, LLMProviderGLM, LLMProviderKimi, LLMProviderQwen, LLMProviderMiniMax, LLMProviderMistral, LLMProviderXAI:
 		if config.BaseURL.Value != "" {
 			sections = append(sections, fmt.Sprintf("• %s: %s",
@@ -748,6 +766,8 @@ func (m *LLMProviderFormModel) GetHelpContent() string {
 		sections = append(sections, locale.LLMFormMistralHelp)
 	case LLMProviderXAI:
 		sections = append(sections, locale.LLMFormXAIHelp)
+	case LLMProviderClaudeCLI:
+		sections = append(sections, locale.LLMFormClaudeCLIHelp)
 	case LLMProviderCustom:
 		sections = append(sections, locale.LLMFormCustomHelp)
 	}
@@ -1009,6 +1029,8 @@ func (m *LLMProviderFormModel) getDefaultBaseURL() string {
 		return "https://api.mistral.ai/v1"
 	case LLMProviderXAI:
 		return "https://api.x.ai/v1"
+	case LLMProviderClaudeCLI:
+		return "unix:///run/claude-worker/worker.sock"
 	case LLMProviderCustom:
 		return "http://llm-server:8000"
 	default:

@@ -110,7 +110,7 @@ func (m *AIAgentsSettingsFormModel) BuildForm() tea.Cmd {
 // offered as suggestions on the fallback field.
 var llmFallbackProviders = []string{
 	"openai", "anthropic", "gemini", "bedrock", "ollama", "custom",
-	"deepseek", "glm", "kimi", "qwen", "minimax", "mistral", "xai",
+	"deepseek", "glm", "kimi", "qwen", "minimax", "mistral", "xai", "claude_cli",
 }
 
 func (m *AIAgentsSettingsFormModel) createSelectField(

@@ -20,6 +20,7 @@ import type { UserResourceFragmentFragment } from '@/graphql/types';
 
 import { ProviderIcon } from '@/components/icons/provider-icon';
 import ConfirmationDialog from '@/components/shared/confirmation-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -42,6 +43,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useResourcesUpload } from '@/features/resources/use-resources-upload';
+import { ProviderType } from '@/graphql/types';
 import { useAppForm } from '@/hooks/use-app-form';
 import { getProviderDisplayName } from '@/models/provider';
 import { useProviders } from '@/providers/providers-provider';
@@ -631,6 +633,16 @@ export function FlowForm({
                                                                             <span className="flex-1 truncate">
                                                                                 {getProviderDisplayName(provider)}
                                                                             </span>
+                                                                            {provider.type ===
+                                                                                ProviderType.ClaudeCli && (
+                                                                                <Badge
+                                                                                    className="shrink-0 px-1.5 py-0 text-[10px] text-orange-400"
+                                                                                    title="Runs through the Claude Code CLI on the host and uses the logged-in subscription"
+                                                                                    variant="outline"
+                                                                                >
+                                                                                    CLI
+                                                                                </Badge>
+                                                                            )}
                                                                             {providerField.value === provider.name && (
                                                                                 <Check className="ml-auto size-4 shrink-0" />
                                                                             )}

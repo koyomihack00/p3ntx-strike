@@ -27,6 +27,7 @@ import (
 	"pentagi/pkg/providers"
 	router "pentagi/pkg/server"
 	"pentagi/pkg/server/update"
+	"pentagi/pkg/tools/scopegate"
 	"pentagi/pkg/version"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -81,6 +82,20 @@ func main() {
 		"schema":          cfg.SchemaName(),
 		"installation_id": cfg.InstallationID,
 	}).Info("Instance identity")
+
+	if _, err := scopegate.FromConfig(cfg); err != nil {
+		logrus.WithError(err).Fatal("Invalid scope gate configuration")
+	}
+	scopeFields := logrus.Fields{
+		"cidrs":           len(cfg.ScopeGateCIDRs),
+		"hosts":           len(cfg.ScopeGateHosts),
+		"external_search": cfg.ScopeGateExternalSearch,
+	}
+	if len(cfg.ScopeGateCIDRs) == 0 && len(cfg.ScopeGateHosts) == 0 {
+		logrus.WithFields(scopeFields).Warn("Scope gate has an empty scope: every tool call that names a target is refused")
+	} else {
+		logrus.WithFields(scopeFields).Info("Scope gate")
+	}
 
 	// Telemetry is optional — degrade to a no-op observer on init failure so an
 	// unreachable collector can't take the app down.

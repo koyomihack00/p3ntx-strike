@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -903,4 +904,100 @@ func fakeScraper(t *testing.T, target string, pages map[string]scraperAnswer) *h
 	t.Cleanup(ts.Close)
 
 	return ts
+}
+
+// --- Executor logs ---
+
+// executorMsgLog stands in for the message log and, like the database, refuses a write through a done context.
+type executorMsgLog struct {
+	putErr    error
+	updateErr error
+
+	result string
+	format database.MsglogResultFormat
+}
+
+func (l *executorMsgLog) PutMsg(
+	ctx context.Context, _ database.MsglogType, _, _ *int64, _ int64, _, _ string,
+) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	if l.putErr != nil {
+		return 0, l.putErr
+	}
+	return 1, nil
+}
+
+func (l *executorMsgLog) UpdateMsgResult(
+	ctx context.Context, _ int64, _ int64, result string, format database.MsglogResultFormat,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	l.result, l.format = result, format
+	return l.updateErr
+}
+
+// executorToolCallLog stands in for the tool call log and, like the database, refuses a write through a done context.
+type executorToolCallLog struct {
+	putErr     error
+	successErr error
+
+	success []string
+	failed  []string
+}
+
+func (l *executorToolCallLog) PutLog(
+	ctx context.Context, _, _ string, _ json.RawMessage, _, _ *int64,
+) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	if l.putErr != nil {
+		return 0, l.putErr
+	}
+	return 1, nil
+}
+
+func (l *executorToolCallLog) UpdateLogSuccess(ctx context.Context, _ int64, result string, _ float64) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	l.success = append(l.success, result)
+	return l.successErr
+}
+
+func (l *executorToolCallLog) UpdateLogFailed(ctx context.Context, _ int64, result string, _ float64) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	l.failed = append(l.failed, result)
+	return nil
+}
+
+// --- Scope gate ---
+
+// allowEveryCall lets every call through, for tests of what Execute does once a call may run.
+type allowEveryCall struct{}
+
+func (allowEveryCall) AuthorizeToolCall(context.Context, ToolCall) error { return nil }
+
+// refuseEveryCall records each call it is asked about and refuses it.
+type refuseEveryCall struct {
+	mu    sync.Mutex
+	calls []ToolCall
+}
+
+func (r *refuseEveryCall) AuthorizeToolCall(_ context.Context, call ToolCall) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.calls = append(r.calls, call)
+	return errors.New("target 203.0.113.9 is out of scope")
+}
+
+func (r *refuseEveryCall) seen() []ToolCall {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.calls)
 }

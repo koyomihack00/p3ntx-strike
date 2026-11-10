@@ -30,6 +30,8 @@ import { DeleteProviderDocument, ProviderType, SettingsProvidersDocument } from 
 import { useTableState } from '@/hooks/use-table-state';
 import { routes } from '@/lib/routes';
 import { formatTableDate } from '@/lib/utils/format';
+
+import { ProvidersStatusPanel } from './settings-providers-status';
 type Provider = ProviderConfigFragmentFragment;
 
 // Exhaustive Record so a newly-added ProviderType is a compile error here, not a
@@ -37,6 +39,7 @@ type Provider = ProviderConfigFragmentFragment;
 const providerLabels: Record<ProviderType, string> = {
     [ProviderType.Anthropic]: 'Anthropic',
     [ProviderType.Bedrock]: 'Bedrock',
+    [ProviderType.ClaudeCli]: 'Claude Code CLI',
     [ProviderType.Custom]: 'Custom',
     [ProviderType.Deepseek]: 'DeepSeek',
     [ProviderType.Gemini]: 'Gemini',
@@ -443,12 +446,25 @@ function SettingsProviders() {
     }
 
     const providers = data?.settingsProviders?.userDefined || [];
+    const enabled = data?.settingsProviders?.enabled;
+    const statusPanel = (
+        <ProvidersStatusPanel
+            items={[...providerTypes]
+                .sort((a, b) => a.label.localeCompare(b.label))
+                .map(({ label, type }) => ({
+                    configured: Boolean(enabled?.[type as keyof typeof enabled]),
+                    label,
+                    type,
+                }))}
+        />
+    );
 
     if (providers.length === 0) {
         return (
             <>
                 {pageHeader}
                 <div className="flex flex-1 flex-col gap-4 p-4">
+                    {statusPanel}
                     <Empty>
                         <EmptyHeader>
                             <EmptyMedia variant="icon">
@@ -478,6 +494,7 @@ function SettingsProviders() {
         <>
             {pageHeader}
             <div className="flex flex-1 flex-col gap-4 p-4">
+                {statusPanel}
                 <DataTable<Provider>
                     columns={columns}
                     data={providers}

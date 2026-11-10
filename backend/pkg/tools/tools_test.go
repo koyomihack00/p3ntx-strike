@@ -896,6 +896,62 @@ func TestTools_GetExecutors_GiveEachAgentItsTools(t *testing.T) {
 	}
 }
 
+// Covers the Get*Executor factories; subtests are keyed by factory.
+func TestTools_GetExecutors_GateEveryToolCallBeforeItRuns(t *testing.T) {
+	agents := map[string]database.MsgchainType{
+		"GetAssistantExecutor": "assistant", "GetPrimaryExecutor": "primary_agent",
+		"GetInstallerExecutor": "installer", "GetCoderExecutor": "coder", "GetPentesterExecutor": "pentester",
+		"GetSearcherExecutor": "searcher", "GetGeneratorExecutor": "generator", "GetRefinerExecutor": "refiner",
+		"GetMemoristExecutor": "memorist", "GetEnricherExecutor": "enricher", "GetReporterExecutor": "reporter",
+	}
+
+	cases, _ := toolsAgentExecutorCases()
+	for _, tc := range cases {
+		t.Run(strings.TrimSpace(tc.factory+" "+tc.variant), func(t *testing.T) {
+			wantAgent, ok := agents[tc.factory]
+			require.True(t, ok, "no agent is expected for %s", tc.factory)
+
+			fte := toolsAgentFlow(t, true)
+			fte.mlp, fte.tclp = &executorMsgLog{}, &executorToolCallLog{}
+			gate := &refuseEveryCall{}
+			fte.SetCallAuthorizer(gate)
+
+			executor, err := tc.build(fte, true, "")
+			require.NoError(t, err)
+			ce := executor.(*customExecutor)
+
+			var ran []string
+			for name, handler := range ce.handlers {
+				ce.handlers[name] = func(ctx context.Context, n string, args json.RawMessage) (string, error) {
+					ran = append(ran, n)
+					return handler(ctx, n, args)
+				}
+			}
+
+			var offered []string
+			for _, def := range ce.definitions {
+				offered = append(offered, def.Name)
+				result, err := executor.Execute(t.Context(), 1, "call-"+def.Name, def.Name, def.Name, "",
+					json.RawMessage(`{"input":"id","url":"http://203.0.113.9/","message":"m"}`))
+				require.NoError(t, err)
+				assert.Contains(t, result, "refused", "the %s call was not refused", def.Name)
+			}
+
+			require.NotEmpty(t, offered)
+			assert.Empty(t, ran, "a handler ran although the gate refused every call")
+			assert.Empty(t, fte.docker.(*fakeDockerClient).execCreated.Cmd, "a command reached the sandbox")
+
+			var judged []string
+			for _, call := range gate.seen() {
+				judged = append(judged, call.Tool)
+				assert.Equal(t, wantAgent, call.Agent, "the %s call was judged as the wrong agent", call.Tool)
+				assert.Equal(t, int64(42), call.FlowID)
+			}
+			assert.ElementsMatch(t, offered, judged, "every tool offered must pass the gate exactly once")
+		})
+	}
+}
+
 // Covers the Get*Executor factories; subtests are keyed by factory. The terminal log carries the agent's task and subtask.
 func TestTools_GetExecutors_BindTheTerminalToTheFlowSandbox(t *testing.T) {
 	cases, _ := toolsAgentExecutorCases()

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"pentagi/pkg/providers/claudecli"
 	"pentagi/pkg/providers/pconfig"
 	"pentagi/pkg/providers/provider"
 
@@ -55,6 +56,10 @@ func TestRetry_IsDeterministicError_TellsARepeatableFailureFromATransientOne(t *
 		{"connection dropped", errors.New("connection refused"), false},
 		{"a digit run that spells a status", errors.New("API returned unexpected status code: 503: maximum 4000 tokens"), false},
 		{"output stopped at the limit", &llms.ErrStructuredOutputValidation{}, false},
+		{"claude cli fatal", fmt.Errorf("call: %w", claudecli.ErrNativeToolActivity), true},
+		{"claude cli invalid decision", fmt.Errorf("call: %w", claudecli.ErrInvalidDecision), false},
+		{"claude cli worker unavailable", claudecli.ErrWorkerUnavailable, false},
+		{"marker that says it is transient", markedError(false), false},
 	}
 
 	for _, tt := range tests {
@@ -64,6 +69,11 @@ func TestRetry_IsDeterministicError_TellsARepeatableFailureFromATransientOne(t *
 		})
 	}
 }
+
+type markedError bool
+
+func (m markedError) Error() string       { return "marked" }
+func (m markedError) Deterministic() bool { return bool(m) }
 
 // Rows script each attempt's error; once the script runs out, its last entry repeats.
 func TestRetry_RetryTransient_AsksAgainOnlyAfterATransientFailure(t *testing.T) {

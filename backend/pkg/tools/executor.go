@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -138,11 +139,28 @@ func (w *noopObservationWrapper) ctx() context.Context {
 func (w *noopObservationWrapper) end(result string, err error, durationSeconds float64) {
 }
 
+// CallAuthorizer judges a tool call after its handler is found and before it runs.
+// A non-nil error refuses the call, and its text becomes the tool's answer to the
+// model. It must not depend on anything the model can set besides the call itself.
+type CallAuthorizer interface {
+	AuthorizeToolCall(ctx context.Context, call ToolCall) error
+}
+
+type ToolCall struct {
+	FlowID int64
+	Agent  database.MsgchainType
+	Tool   string
+	Args   json.RawMessage
+}
+
 type customExecutor struct {
 	userID    int64
 	flowID    int64
 	taskID    *int64
 	subtaskID *int64
+	agent     database.MsgchainType
+	// authorizer nil refuses every call: an executor nobody gave a gate fails closed.
+	authorizer CallAuthorizer
 
 	db       database.Querier
 	mlp      MsgLogProvider
@@ -338,6 +356,23 @@ func (ce *customExecutor) Execute(
 		"tool_call_id": id,
 	}))
 
+	if err := ce.authorize(ctx, name, args); err != nil {
+		// A refusal is an answer, not a failure: an error would make the caller run the call again.
+		refusal := fmt.Sprintf("this tool call was refused and was not run: %v. "+
+			"The same call will be refused again; do not repeat it.", err)
+		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), closingWriteTimeout)
+		defer cancel()
+		_ = ce.tclp.UpdateLogFailed(persistCtx, tcID, refusal, time.Since(startTime).Seconds())
+		if msgID != 0 {
+			if err := ce.mlp.UpdateMsgResult(persistCtx, msgID, streamID, refusal, database.MsglogResultFormatPlain); err != nil {
+				obs.LogErrorOrCancel(logger, err, "failed to update tool call message result")
+			}
+		}
+		logger.WithField("agent", ce.agent).WithError(err).Warn("tool call refused before it ran")
+		obsWrapper.end(refusal, nil, time.Since(startTime).Seconds())
+		return refusal, nil
+	}
+
 	wrapHandler := func(ctx context.Context, name string, args json.RawMessage) (string, database.MsglogResultFormat, error) {
 		resultFormat := getMessageResultFormat(name)
 		result, err := handler(ctx, name, args)
@@ -443,6 +478,15 @@ func truncateResult(result string) string {
 		len(result),
 		result[tail:],
 	)
+}
+
+var errNoCallAuthorizer = errors.New("no scope authorizer is configured for this executor")
+
+func (ce *customExecutor) authorize(ctx context.Context, name string, args json.RawMessage) error {
+	if ce.authorizer == nil {
+		return errNoCallAuthorizer
+	}
+	return ce.authorizer.AuthorizeToolCall(ctx, ToolCall{FlowID: ce.flowID, Agent: ce.agent, Tool: name, Args: args})
 }
 
 func (ce *customExecutor) IsBarrierFunction(name string) bool {

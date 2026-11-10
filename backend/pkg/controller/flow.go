@@ -26,6 +26,7 @@ import (
 	"pentagi/pkg/providers/provider"
 	"pentagi/pkg/resources"
 	"pentagi/pkg/tools"
+	"pentagi/pkg/tools/scopegate"
 
 	"github.com/moby/moby/client"
 	"github.com/sirupsen/logrus"
@@ -139,6 +140,27 @@ type flowInput struct {
 	reply *inputReply
 }
 
+// newGatedFlowToolsExecutor is the only way the controller builds a tools
+// executor: the scope gate is installed before any agent executor can exist.
+func newGatedFlowToolsExecutor(
+	db database.Querier,
+	cfg *config.Config,
+	dockerClient docker.DockerClient,
+	functions *tools.Functions,
+	userID, flowID int64,
+) (tools.FlowToolsExecutor, error) {
+	executor, err := tools.NewFlowToolsExecutor(db, cfg, dockerClient, functions, userID, flowID)
+	if err != nil {
+		return nil, err
+	}
+	gate, err := scopegate.FromConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build the scope gate: %w", err)
+	}
+	executor.SetCallAuthorizer(gate)
+	return executor, nil
+}
+
 func reserveFlow(ctx context.Context, fwc newFlowWorkerCtx) (database.Flow, error) {
 	ctx, span := obs.Observer.NewSpan(ctx, obs.SpanKindInternal, "controller.reserveFlow")
 	defer span.End()
@@ -214,7 +236,7 @@ func buildFlowWorker(
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to build user prompter", err)
 	}
-	executor, err := tools.NewFlowToolsExecutor(fwc.db, fwc.cfg, fwc.docker, fwc.functions, fwc.userID, flow.ID)
+	executor, err := newGatedFlowToolsExecutor(fwc.db, fwc.cfg, fwc.docker, fwc.functions, fwc.userID, flow.ID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to create flow tools executor", err)
 	}
@@ -398,7 +420,7 @@ func LoadFlowWorker(ctx context.Context, flow database.Flow, fwc flowWorkerCtx) 
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to build user prompter", err)
 	}
-	executor, err := tools.NewFlowToolsExecutor(fwc.db, fwc.cfg, fwc.docker, functions, flow.UserID, flow.ID)
+	executor, err := newGatedFlowToolsExecutor(fwc.db, fwc.cfg, fwc.docker, functions, flow.UserID, flow.ID)
 	if err != nil {
 		return nil, wrapErrorEndSpan(ctx, flowSpan, "failed to create flow tools executor", err)
 	}

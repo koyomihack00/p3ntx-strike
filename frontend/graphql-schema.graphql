@@ -592,6 +592,7 @@ query settingsProviders {
             minimax
             mistral
             xai
+            claude_cli
         }
         default {
             openai {
@@ -631,6 +632,9 @@ query settingsProviders {
                 ...providerConfigFragment
             }
             xai {
+                ...providerConfigFragment
+            }
+            claude_cli {
                 ...providerConfigFragment
             }
         }
@@ -675,6 +679,9 @@ query settingsProviders {
                 ...modelConfigFragment
             }
             xai {
+                ...modelConfigFragment
+            }
+            claude_cli {
                 ...modelConfigFragment
             }
         }

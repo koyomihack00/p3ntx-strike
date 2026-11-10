@@ -91,6 +91,14 @@ func TestRegistry_EnabledDefaultProviderTypes_ReportsOnlyTypesWhoseGateIsSatisfi
 		assert.Equal(t, []string{string(provider.ProviderCustom)}, types)
 	})
 
+	t.Run("claude cli needs both the worker URL and its token", func(t *testing.T) {
+		assert.Empty(t, EnabledDefaultProviderTypes(&config.Config{ClaudeCLIWorkerURL: "unix:///run/w.sock"}))
+		assert.Empty(t, EnabledDefaultProviderTypes(&config.Config{ClaudeCLIWorkerToken: "tok"}))
+
+		types := EnabledDefaultProviderTypes(&config.Config{ClaudeCLIWorkerURL: "unix:///run/w.sock", ClaudeCLIWorkerToken: "tok"})
+		assert.Equal(t, []string{string(provider.ProviderClaudeCLI)}, types)
+	})
+
 	t.Run("without a key anthropic needs a complete federation config", func(t *testing.T) {
 		types := EnabledDefaultProviderTypes(&config.Config{
 			AnthropicFederationRuleID:  "fdrl_1",
